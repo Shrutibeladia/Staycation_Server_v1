@@ -11,14 +11,10 @@ const app = express();
 
 dotenv.config();
 
-const connect = async () => {
-    try {
-      await mongoose.connect(process.env.MONGO);
-      console.log("Connected to mongoDB.");
-    } catch (error) {
-      throw error;
-    }
-  };
+mongoose.connect(process.env.MONGO)
+  .then(() => console.log("MongoDB connected"))
+  .catch(err => console.log(err));
+
 
   app.get("/",(req,res)=>{
     res.send("hello first");
@@ -52,6 +48,5 @@ app.use((err, req, res, next) => {
 
 
 app.listen(8800, () => {
-    connect()
     console.log("Connected to backend.");
   }); 
