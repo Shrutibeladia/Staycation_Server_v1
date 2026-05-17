@@ -82,7 +82,7 @@ export const getBooking = async (req, res, next) => {
   try {
     const booking = await Booking.findById(req.params.id);
     if (!booking) return next(createError(404, "Booking not found."));
-    if (req.user.id !== booking.userId.toString() && !req.user.isAdmin) {
+    if (req.user.id !== booking.userId.toString() && req.user.role !== "admin") {
       return next(createError(403, "You are not authorized to view this booking."));
     }
     res.status(200).json({ success: true, booking });
@@ -93,7 +93,7 @@ export const getBooking = async (req, res, next) => {
 
 export const getUserBookings = async (req, res, next) => {
   try {
-    if (req.user.id !== req.params.id && !req.user.isAdmin) {
+    if (req.user.id !== req.params.id && req.user.role !== "admin") {
       return next(createError(403, "You are not authorized to view these bookings."));
     }
 
@@ -108,7 +108,7 @@ export const cancelBooking = async (req, res, next) => {
   try {
     const booking = await Booking.findById(req.params.id);
     if (!booking) return next(createError(404, "Booking not found."));
-    if (req.user.id !== booking.userId.toString() && !req.user.isAdmin) {
+    if (req.user.id !== booking.userId.toString() && req.user.role !== "admin") {
       return next(createError(403, "You are not authorized to cancel this booking."));
     }
     if (booking.status === "cancelled") {

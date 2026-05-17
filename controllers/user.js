@@ -3,7 +3,7 @@ import { createError } from "../utils/error.js";
 
 export const updateUser = async (req, res, next) => {
   try {
-    const { isAdmin, password, ...safeBody } = req.body;
+    const { isAdmin, role, password, ...safeBody } = req.body;
     const updatedUser = await User.findByIdAndUpdate(
       req.params.id,
       { $set: safeBody },

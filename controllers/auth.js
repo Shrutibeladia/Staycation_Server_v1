@@ -41,7 +41,7 @@ export const login = async (req, res, next) => {
       { expiresIn: process.env.JWT_EXPIRE || "7d" }
     );
 
-    const { password, isAdmin, ...otherDetails } = user._doc;
+    const { password, ...otherDetails } = user._doc;
 
     res.cookie("access_token", token, {
       httpOnly: true,
@@ -50,7 +50,10 @@ export const login = async (req, res, next) => {
       maxAge: 7 * 24 * 60 * 60 * 1000,
     })
       .status(200)
-      .json({ details: { ...otherDetails }, isAdmin });
+      .json({
+        details: { ...otherDetails },
+        isAdmin: user.role === "admin",
+      });
   } catch (err) {
     next(err);
   }
