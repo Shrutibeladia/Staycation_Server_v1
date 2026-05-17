@@ -1,0 +1,347 @@
+{
+  "info": {
+    "name": "Staycation API",
+    "description": "Collection for testing the Staycation backend endpoints, including auth, hotels, rooms, and bookings.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "version": "1.0.0"
+  },
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Admin Register",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"adminuser\",\n  \"email\": \"admin@example.com\",\n  \"password\": \"Admin1234\",\n  \"country\": \"India\",\n  \"city\": \"Ahmedabad\",\n  \"phone\": \"9876543210\",\n  \"role\": \"admin\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/register",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "register"]
+            }
+          }
+        },
+        {
+          "name": "Admin Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"adminuser\",\n  \"password\": \"Admin1234\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "login"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "const cookie = pm.response.headers.get('set-cookie');",
+                  "if (cookie) {",
+                  "  const tokenMatch = cookie.match(/access_token=([^;]+)/);",
+                  "  if (tokenMatch) pm.environment.set('admin_access_token', tokenMatch[1]);",
+                  "}",
+                  "if (res.details && res.details._id) {",
+                  "  pm.environment.set('admin_id', res.details._id);",
+                  "}",
+                  "pm.test('Admin login successful', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Guest Register",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"guestuser\",\n  \"email\": \"guest@example.com\",\n  \"password\": \"Guest1234\",\n  \"country\": \"India\",\n  \"city\": \"Ahmedabad\",\n  \"phone\": \"9123456780\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/register",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "register"]
+            }
+          }
+        },
+        {
+          "name": "Guest Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"guestuser\",\n  \"password\": \"Guest1234\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "login"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "const cookie = pm.response.headers.get('set-cookie');",
+                  "if (cookie) {",
+                  "  const tokenMatch = cookie.match(/access_token=([^;]+)/);",
+                  "  if (tokenMatch) pm.environment.set('guest_access_token', tokenMatch[1]);",
+                  "}",
+                  "if (res.details && res.details._id) {",
+                  "  pm.environment.set('guest_id', res.details._id);",
+                  "}",
+                  "pm.test('Guest login successful', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Hotels",
+      "item": [
+        {
+          "name": "Create Hotel (Admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Cookie", "value": "access_token={{admin_access_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Lakeview Retreat\",\n  \"type\": \"hotel\",\n  \"city\": \"Ahmedabad\",\n  \"address\": \"123 River Road\",\n  \"distance\": \"2 km from center\",\n  \"photos\": [\"https://example.com/photo1.jpg\"],\n  \"title\": \"Luxury lake view hotel\",\n  \"desc\": \"Modern rooms with lake view and free breakfast.\",\n  \"rating\": 4.6,\n  \"cheapestPrice\": 240,\n  \"featured\": true\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/hotels",
+              "host": ["{{base_url}}"],
+              "path": ["api", "hotels"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res._id) pm.environment.set('hotel_id', res._id);",
+                  "pm.test('Hotel created', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Hotels",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/hotels?limit=10&page=1",
+              "host": ["{{base_url}}"],
+              "path": ["api", "hotels"],
+              "query": [
+                { "key": "limit", "value": "10" },
+                { "key": "page", "value": "1" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Hotel by ID",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/hotels/find/{{hotel_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "hotels", "find", "{{hotel_id}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Rooms",
+      "item": [
+        {
+          "name": "Create Room (Admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Cookie", "value": "access_token={{admin_access_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Deluxe Room\",\n  \"price\": 180,\n  \"maxPeople\": 2,\n  \"desc\": \"Spacious deluxe room with king bed.\",\n  \"roomNumbers\": [\n    {\n      \"number\": 101,\n      \"unavailableDates\": []\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/rooms/{{hotel_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "rooms", "{{hotel_id}}"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res._id) pm.environment.set('room_id', res._id);",
+                  "if (res.roomNumbers && res.roomNumbers.length) pm.environment.set('room_number_id', res.roomNumbers[0]._id);",
+                  "pm.test('Room created', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Room by ID",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/rooms/{{room_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "rooms", "{{room_id}}"]
+            }
+          }
+        },
+        {
+          "name": "Update Room Availability (Guest booking)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Cookie", "value": "access_token={{guest_access_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"dates\": [\"2026-06-01\", \"2026-06-02\"]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/rooms/availability/{{room_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "rooms", "availability", "{{room_id}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Bookings",
+      "item": [
+        {
+          "name": "Create Booking (Guest)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Cookie", "value": "access_token={{guest_access_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"hotelId\": \"{{hotel_id}}\",\n  \"roomId\": \"{{room_id}}\",\n  \"roomNumberId\": \"{{room_number_id}}\",\n  \"checkInDate\": \"2026-06-01\",\n  \"checkOutDate\": \"2026-06-03\",\n  \"totalPrice\": 360,\n  \"guests\": 2\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/bookings",
+              "host": ["{{base_url}}"],
+              "path": ["api", "bookings"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.booking && res.booking._id) pm.environment.set('booking_id', res.booking._id);",
+                  "pm.test('Booking created', function () { pm.response.to.have.status(201); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get User Bookings",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Cookie", "value": "access_token={{guest_access_token}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/bookings/user/{{guest_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "bookings", "user", "{{guest_id}}"]
+            }
+          }
+        },
+        {
+          "name": "Get Booking by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Cookie", "value": "access_token={{guest_access_token}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/bookings/{{booking_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "bookings", "{{booking_id}}"]
+            }
+          }
+        },
+        {
+          "name": "Cancel Booking",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Cookie", "value": "access_token={{guest_access_token}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/bookings/{{booking_id}}/cancel",
+              "host": ["{{base_url}}"],
+              "path": ["api", "bookings", "{{booking_id}}", "cancel"]
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    { "key": "base_url", "value": "http://localhost:8800" },
+    { "key": "admin_access_token", "value": "" },
+    { "key": "guest_access_token", "value": "" },
+    { "key": "admin_id", "value": "" },
+    { "key": "guest_id", "value": "" },
+    { "key": "hotel_id", "value": "" },
+    { "key": "room_id", "value": "" },
+    { "key": "room_number_id", "value": "" },
+    { "key": "booking_id", "value": "" }
+  ]
+}
