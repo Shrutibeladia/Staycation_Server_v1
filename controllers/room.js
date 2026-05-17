@@ -9,11 +9,15 @@ export const createRoom = async (req, res, next) => {
   try {
     const savedRoom = await newRoom.save();
     try {
-      await Hotel.findByIdAndUpdate(hotelId, {
+      const updatedHotel = await Hotel.findByIdAndUpdate(hotelId, {
         $push: { rooms: savedRoom._id },
       });
+      if (!updatedHotel) {
+        await Room.findByIdAndDelete(savedRoom._id);
+        return next(createError(404, "Hotel not found."));
+      }
     } catch (err) {
-      next(err);
+      return next(err);
     }
     res.status(200).json(savedRoom);
   } catch (err) {
@@ -28,6 +32,7 @@ export const updateRoom = async (req, res, next) => {
       { $set: req.body },
       { new: true }
     );
+    if (!updatedRoom) return next(createError(404, "Room not found."));
     res.status(200).json(updatedRoom);
   } catch (err) {
     next(err);
@@ -35,14 +40,17 @@ export const updateRoom = async (req, res, next) => {
 };
 export const updateRoomAvailability = async (req, res, next) => {
   try {
-    await Room.updateOne(
+    const updateResult = await Room.updateOne(
       { "roomNumbers._id": req.params.id },
       {
         $push: {
-          "roomNumbers.$.unavailableDates": req.body.dates
+          "roomNumbers.$.unavailableDates": req.body.dates,
         },
       }
     );
+    if (!updateResult.matchedCount) {
+      return next(createError(404, "Room or room number not found."));
+    }
     res.status(200).json("Room status has been updated.");
   } catch (err) {
     next(err);
@@ -51,13 +59,14 @@ export const updateRoomAvailability = async (req, res, next) => {
 export const deleteRoom = async (req, res, next) => {
   const hotelId = req.params.hotelid;
   try {
-    await Room.findByIdAndDelete(req.params.id);
+    const deletedRoom = await Room.findByIdAndDelete(req.params.id);
+    if (!deletedRoom) return next(createError(404, "Room not found."));
     try {
       await Hotel.findByIdAndUpdate(hotelId, {
         $pull: { rooms: req.params.id },
       });
     } catch (err) {
-      next(err);
+      return next(err);
     }
     res.status(200).json("Room has been deleted.");
   } catch (err) {
@@ -67,15 +76,30 @@ export const deleteRoom = async (req, res, next) => {
 export const getRoom = async (req, res, next) => {
   try {
     const room = await Room.findById(req.params.id);
+    if (!room) return next(createError(404, "Room not found."));
     res.status(200).json(room);
   } catch (err) {
     next(err);
   }
 };
 export const getRooms = async (req, res, next) => {
+  const { page = 1, limit = 10 } = req.query;
+  const pageNumber = Math.max(Number(page) || 1, 1);
+  const pageSize = Math.max(Number(limit) || 10, 1);
+  const skip = (pageNumber - 1) * pageSize;
+
   try {
-    const rooms = await Room.find();
-    res.status(200).json(rooms);
+    const [rooms, total] = await Promise.all([
+      Room.find().skip(skip).limit(pageSize),
+      Room.countDocuments(),
+    ]);
+    res.status(200).json({
+      success: true,
+      total,
+      page: pageNumber,
+      limit: pageSize,
+      rooms,
+    });
   } catch (err) {
     next(err);
   }

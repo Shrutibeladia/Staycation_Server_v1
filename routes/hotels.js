@@ -1,4 +1,5 @@
 import express from "express";
+import { body } from "express-validator";
 import {
   countByCity,
   countByType,
@@ -9,15 +10,32 @@ import {
   getHotels,
   updateHotel,
 } from "../controllers/hotel.js";
-import Hotel from "../models/Hotel.js";
-import {verifyAdmin} from "../utils/verifyToken.js"
+import { verifyAdmin } from "../utils/verifyToken.js";
+import { validateRequest } from "../utils/validate.js";
 const router = express.Router();
 
+const hotelValidators = [
+  body("name").trim().notEmpty().withMessage("Hotel name is required."),
+  body("type").trim().notEmpty().withMessage("Hotel type is required."),
+  body("city").trim().notEmpty().withMessage("City is required."),
+  body("address").trim().notEmpty().withMessage("Address is required."),
+  body("distance").trim().notEmpty().withMessage("Distance is required."),
+  body("title").trim().notEmpty().withMessage("Title is required."),
+  body("desc").trim().notEmpty().withMessage("Description is required."),
+  body("cheapestPrice")
+    .isNumeric()
+    .withMessage("Cheapest price must be a numeric value."),
+  body("rating")
+    .optional()
+    .isFloat({ min: 0, max: 5 })
+    .withMessage("Rating must be between 0 and 5."),
+];
+
 //CREATE
-router.post("/", verifyAdmin, createHotel);
+router.post("/", verifyAdmin, hotelValidators, validateRequest, createHotel);
 
 //UPDATE
-router.put("/:id", verifyAdmin, updateHotel);
+router.put("/:id", verifyAdmin, hotelValidators, validateRequest, updateHotel);
 //DELETE
 router.delete("/:id", verifyAdmin, deleteHotel);
 //GET
