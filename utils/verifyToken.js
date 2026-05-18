@@ -1,11 +1,11 @@
 import jwt from "jsonwebtoken"
 import { createError } from "../utils/error.js";
+import { getTokenFromRequest } from "./authCookie.js";
 
 const isAdminUser = (user) => user?.role === "admin";
 
 export const verifyToken = (req, res, next) => {
-  const token = req.cookies?.access_token;
-  console.log(token);
+  const token = getTokenFromRequest(req);
   if (!token) {
     return next(createError(401, "You are not authenticated!"));
   }

@@ -2,6 +2,7 @@ import User from "../models/User.js";
 import bcrypt from "bcryptjs";
 import { createError } from "../utils/error.js";
 import jwt from "jsonwebtoken";
+import { authCookieOptions } from "../utils/authCookie.js";
 
 export const register = async (req, res, next) => {
   try {
@@ -43,16 +44,13 @@ export const login = async (req, res, next) => {
 
     const { password, ...otherDetails } = user._doc;
 
-    res.cookie("access_token", token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-    })
+    res
+      .cookie("access_token", token, authCookieOptions())
       .status(200)
       .json({
         details: { ...otherDetails },
         isAdmin: user.role === "admin",
+        token,
       });
   } catch (err) {
     next(err);
