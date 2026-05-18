@@ -5,7 +5,7 @@ const isAdminUser = (user) => user?.role === "admin";
 
 export const verifyToken = (req, res, next) => {
   const token = req.cookies?.access_token;
-
+  console.log(token);
   if (!token) {
     return next(createError(401, "You are not authenticated!"));
   }

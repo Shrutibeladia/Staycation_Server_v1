@@ -35,7 +35,7 @@ app.use(helmet());
 app.use(limiter);
 app.use(
   cors({
-    origin: process.env.CORS_ORIGIN || true,
+    origin: true,
     credentials: true,
   })
 );
