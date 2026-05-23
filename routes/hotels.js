@@ -12,6 +12,7 @@ import {
 } from "../controllers/hotel.js";
 import { verifyAdmin } from "../utils/verifyToken.js";
 import { validateRequest } from "../utils/validate.js";
+import upload from "../utils/multerConfig.js";
 const router = express.Router();
 
 const hotelValidators = [
@@ -32,7 +33,7 @@ const hotelValidators = [
 ];
 
 //CREATE
-router.post("/", verifyAdmin, hotelValidators, validateRequest, createHotel);
+router.post("/", verifyAdmin, upload.array('photos', 10), hotelValidators, validateRequest, createHotel);
 
 //UPDATE
 router.put("/:id", verifyAdmin, hotelValidators, validateRequest, updateHotel);

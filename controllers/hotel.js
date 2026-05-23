@@ -1,14 +1,61 @@
 import Hotel from "../models/Hotel.js";
 import Room from "../models/Room.js";
 import { createError } from "../utils/error.js";
+import cloudinary from "../utils/cloudinaryConfig.js";
+import fs from "fs";
+import path from "path";
 
 export const createHotel = async (req, res, next) => {
-  const newHotel = new Hotel(req.body);
-
   try {
+    const hotelData = req.body;
+    const photos = [];
+
+    // Handle image uploads if files are provided
+    if (req.files && req.files.length > 0) {
+      for (const file of req.files) {
+        try {
+          // Upload file to Cloudinary
+          const result = await cloudinary.uploader.upload(file.path, {
+            folder: "staycation/hotels",
+            resource_type: "auto",
+          });
+
+          // Add the secure URL to photos array
+          photos.push(result.secure_url);
+
+          // Delete the temporary file
+          fs.unlink(file.path, (err) => {
+            if (err) console.error("Error deleting temp file:", err);
+          });
+        } catch (cloudinaryError) {
+          console.error("Cloudinary upload error:", cloudinaryError);
+          // Clean up temp file on error
+          fs.unlink(file.path, (err) => {
+            if (err) console.error("Error deleting temp file:", err);
+          });
+          return next(createError(500, "Image upload failed"));
+        }
+      }
+    }
+
+    // Add photos to hotel data
+    if (photos.length > 0) {
+      hotelData.photos = photos;
+    }
+
+    const newHotel = new Hotel(hotelData);
+
     const savedHotel = await newHotel.save();
     res.status(200).json(savedHotel);
   } catch (err) {
+    // Clean up any uploaded files in case of error
+    if (req.files && req.files.length > 0) {
+      req.files.forEach((file) => {
+        fs.unlink(file.path, (err) => {
+          if (err) console.error("Error deleting temp file:", err);
+        });
+      });
+    }
     next(err);
   }
 };
