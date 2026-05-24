@@ -4,56 +4,86 @@ import { createError } from "../utils/error.js";
 import cloudinary from "../utils/cloudinaryConfig.js";
 import fs from "fs";
 import path from "path";
+import streamifier from "streamifier";
 
 export const createHotel = async (req, res, next) => {
   try {
-    const hotelData = req.body;
+    console.log("createHotel called");
+    console.log("req.body keys:", Object.keys(req.body));
+    console.log(
+      "req.files:",
+      Array.isArray(req.files)
+        ? req.files.map((f) => ({
+            originalname: f.originalname,
+            size: f.size,
+            hasPath: !!f.path,
+            hasBuffer: !!f.buffer,
+          }))
+        : req.files
+    );
+
+    const hotelData = { ...req.body };
     const photos = [];
 
-    // Handle image uploads if files are provided
     if (req.files && req.files.length > 0) {
       for (const file of req.files) {
         try {
-          // Upload file to Cloudinary
-          const result = await cloudinary.uploader.upload(file.path, {
-            folder: "staycation/hotels",
-            resource_type: "auto",
-          });
+          let result;
+          if (file.path) {
+            result = await cloudinary.uploader.upload(file.path, {
+              folder: "staycation/hotels",
+              resource_type: "auto",
+            });
+          } else if (file.buffer) {
+            result = await new Promise((resolve, reject) => {
+              const uploadStream = cloudinary.uploader.upload_stream(
+                { folder: "staycation/hotels", resource_type: "auto" },
+                (error, result) => {
+                  if (error) return reject(error);
+                  resolve(result);
+                }
+              );
+              streamifier.createReadStream(file.buffer).pipe(uploadStream);
+            });
+          } else {
+            throw new Error("No file.path or file.buffer available for upload");
+          }
 
-          // Add the secure URL to photos array
-          photos.push(result.secure_url);
+          photos.push(result.secure_url || result.url);
 
-          // Delete the temporary file
-          fs.unlink(file.path, (err) => {
-            if (err) console.error("Error deleting temp file:", err);
-          });
+          if (file.path) {
+            fs.unlink(file.path, (err) => {
+              if (err) console.error("Error deleting temp file:", err);
+            });
+          }
         } catch (cloudinaryError) {
           console.error("Cloudinary upload error:", cloudinaryError);
-          // Clean up temp file on error
-          fs.unlink(file.path, (err) => {
-            if (err) console.error("Error deleting temp file:", err);
-          });
+          if (file.path) {
+            fs.unlink(file.path, (err) => {
+              if (err) console.error("Error deleting temp file:", err);
+            });
+          }
           return next(createError(500, "Image upload failed"));
         }
       }
     }
 
-    // Add photos to hotel data
     if (photos.length > 0) {
       hotelData.photos = photos;
     }
 
     const newHotel = new Hotel(hotelData);
-
     const savedHotel = await newHotel.save();
     res.status(200).json(savedHotel);
   } catch (err) {
-    // Clean up any uploaded files in case of error
+    console.error("createHotel unexpected error:", err);
     if (req.files && req.files.length > 0) {
       req.files.forEach((file) => {
-        fs.unlink(file.path, (err) => {
-          if (err) console.error("Error deleting temp file:", err);
-        });
+        if (file.path) {
+          fs.unlink(file.path, (unlinkErr) => {
+            if (unlinkErr) console.error("Error deleting temp file:", unlinkErr);
+          });
+        }
       });
     }
     next(err);
