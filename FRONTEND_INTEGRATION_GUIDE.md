@@ -1010,12 +1010,12 @@ Booking owner or admin
 - After cancellation, refresh booking history.
 - Backend removes booked dates from nested room availability.
 
-### Payments - Create Payment Intent
+### Payments - Create Razorpay Order
 #### Route
 `POST /api/payments`
 
 #### Purpose
-Create a Stripe PaymentIntent for a booking.
+Create a Razorpay order for a booking in test mode.
 
 #### Authentication Required?
 Yes
@@ -1027,7 +1027,7 @@ guest/host/admin
 ```json
 {
   "amount": 360,
-  "currency": "usd",
+  "currency": "INR",
   "bookingId": "..."
 }
 ```
@@ -1040,25 +1040,28 @@ guest/host/admin
 ```json
 {
   "success": true,
-  "clientSecret": "...",
-  "paymentIntentId": "..."
+  "orderId": "...",
+  "amount": 36000,
+  "currency": "INR",
+  "keyId": "...",
+  "bookingId": "..."
 }
 ```
 
 #### Edge Cases
-- Returns `500` if `STRIPE_KEY` is not configured.
-- Payment flow is not fully production-ready.
+- Returns `500` if `RAZORPAY_KEY_ID` or `RAZORPAY_KEY_SECRET` is not configured.
+- Payment flow is only validated by signature, not by webhook.
 
 #### Frontend Notes
-- Do not use this endpoint in production until Stripe is configured.
-- Use Stripe client SDK only after verifying `clientSecret` is returned.
+- Use the returned `keyId` and `orderId` to open Razorpay Checkout.
+- Pass `razorpayPaymentId`, `razorpayOrderId`, and `razorpaySignature` to `/api/payments/confirm` after success.
 
 ### Payments - Confirm Payment
 #### Route
 `POST /api/payments/confirm`
 
 #### Purpose
-Mark a booking as paid and confirmed.
+Verify Razorpay payment signature and mark a booking as paid.
 
 #### Authentication Required?
 Yes
@@ -1070,7 +1073,9 @@ guest/host/admin
 ```json
 {
   "bookingId": "...",
-  "paymentIntentId": "..."
+  "razorpayPaymentId": "...",
+  "razorpayOrderId": "...",
+  "razorpaySignature": "..."
 }
 ```
 
@@ -1083,8 +1088,8 @@ guest/host/admin
 ```
 
 #### Frontend Notes
-- This endpoint only updates booking status locally.
-- It does not verify Stripe webhook events.
+- This endpoint verifies Razorpay signature before confirming the booking.
+- It does not use webhook verification in this implementation.
 
 ## HOTEL FLOW
 

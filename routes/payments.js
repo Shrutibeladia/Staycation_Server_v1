@@ -22,7 +22,9 @@ router.post(
   verifyToken,
   [
     body("bookingId").notEmpty().withMessage("bookingId is required."),
-    body("paymentIntentId").notEmpty().withMessage("paymentIntentId is required."),
+    body("razorpayPaymentId").notEmpty().withMessage("razorpayPaymentId is required."),
+    body("razorpayOrderId").notEmpty().withMessage("razorpayOrderId is required."),
+    body("razorpaySignature").notEmpty().withMessage("razorpaySignature is required."),
   ],
   validateRequest,
   confirmPayment
