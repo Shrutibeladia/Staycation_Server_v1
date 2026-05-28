@@ -9,8 +9,10 @@ import {
   getHotelRooms,
   getHotels,
   updateHotel,
+  addReview,
+  getReviews,
 } from "../controllers/hotel.js";
-import { verifyAdmin } from "../utils/verifyToken.js";
+import { verifyAdmin, verifyToken } from "../utils/verifyToken.js";
 import { validateRequest } from "../utils/validate.js";
 import upload from "../utils/multerConfig.js";
 const router = express.Router();
@@ -48,5 +50,11 @@ router.get("/", getHotels);
 router.get("/countByCity", countByCity);
 router.get("/countByType", countByType);
 router.get("/room/:id", getHotelRooms);
+
+// REVIEWS
+// List reviews + aggregates for a hotel
+router.get("/:id/reviews", getReviews);
+// Post a review (must be authenticated and post-stay verified)
+router.post("/:id/reviews", verifyToken, addReview);
 
 export default router;

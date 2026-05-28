@@ -798,6 +798,28 @@ public
 }
 ```
 
+## Reviews & Ratings Integration
+
+Backend endpoints (examples):
+- `GET /api/hotels/:id/reviews` — returns JSON with `aggregates` and `reviews`.
+- `POST /api/hotels/:id/reviews` — body `{ rating, comment, bookingId }` (requires auth). Token may be provided in cookie `access_token` or header `Authorization: Bearer <token>`.
+
+Frontend snippets (React):
+- `frontend_snippets/ReviewService.js` — thin HTTP client for reviews
+- `frontend_snippets/ReviewContext.js` — React Context provider to fetch and submit reviews
+- `frontend_snippets/useReviews.js` — small hook to consume the context
+
+Recommended UI behavior:
+- Display `aggregates.trustScore` prominently on listing and hotel pages.
+- Show `isVerified` badges on reviews from verified guests.
+- Hide or mark reviews with `abuseFlag` as needing moderation.
+- Disallow review submission until checkout date has passed — the backend enforces this, but reflect the rule in UI.
+
+Security notes:
+- Submit review requests with the same auth token used for bookings/payments so the backend can verify the booking owner.
+- Use `fetch(..., { credentials: 'include' })` or Axios `withCredentials: true` to ensure cookie auth is sent.
+
+
 #### Frontend Notes
 - Useful for admin or global room list pages.
 - Not typically needed for guest booking flows.

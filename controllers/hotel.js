@@ -1,5 +1,7 @@
 import Hotel from "../models/Hotel.js";
 import Room from "../models/Room.js";
+import Review from "../models/Review.js";
+import Booking from "../models/Booking.js";
 import { createError } from "../utils/error.js";
 import cloudinary from "../utils/cloudinaryConfig.js";
 import fs from "fs";
@@ -192,6 +194,110 @@ export const getHotelRooms = async (req, res, next) => {
       })
     );
     res.status(200).json(list)
+  } catch (err) {
+    next(err);
+  }
+};
+
+// POST a review for a hotel (post-stay, verified guest only)
+export const addReview = async (req, res, next) => {
+  try {
+    const hotelId = req.params.id;
+    const userId = req.user?.id;
+    const { rating, comment = "", bookingId } = req.body;
+
+    if (!userId) return next(createError(401, "Authentication required."));
+    if (!rating || rating < 1 || rating > 5)
+      return next(createError(400, "Rating must be between 1 and 5."));
+    if (!bookingId) return next(createError(400, "bookingId is required."));
+
+    // verify booking exists and is a completed stay
+    const booking = await Booking.findOne({
+      _id: bookingId,
+      userId,
+      hotelId,
+      status: "confirmed",
+      paymentStatus: "completed",
+    });
+    if (!booking) return next(createError(403, "No verified completed booking found."));
+    if (new Date(booking.checkOutDate) > new Date())
+      return next(createError(403, "You can only review after checkout."));
+
+    // prevent duplicate review for same booking
+    const existing = await Review.findOne({ bookingId });
+    if (existing) return next(createError(409, "Review for this booking already exists."));
+
+    // basic abuse/profanity detection (simple keyword list)
+    const abuseWords = ["abuseword1", "hate", "idiot", "stupid", "spam"];
+    const lowered = comment.toLowerCase();
+    const abuseFlag = abuseWords.some((w) => lowered.includes(w));
+
+    const newReview = new Review({
+      userId,
+      hotelId,
+      bookingId,
+      rating,
+      comment,
+      isVerified: true,
+      abuseFlag,
+    });
+
+    await newReview.save();
+
+    // update hotel's aggregate rating (exclude flagged reviews)
+    const agg = await Review.aggregate([
+      { $match: { hotelId: newReview.hotelId, abuseFlag: false } },
+      {
+        $group: {
+          _id: "$hotelId",
+          avgRating: { $avg: "$rating" },
+          count: { $sum: 1 },
+        },
+      },
+    ]);
+
+    if (agg && agg.length > 0) {
+      const avgRating = Math.round(agg[0].avgRating * 10) / 10;
+      await Hotel.findByIdAndUpdate(hotelId, { rating: avgRating });
+    }
+
+    res.status(201).json({ success: true, review: newReview });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// GET reviews and aggregated trust score for a hotel
+export const getReviews = async (req, res, next) => {
+  try {
+    const hotelId = req.params.id;
+
+    const reviews = await Review.find({ hotelId }).populate("userId", "username img").sort({ createdAt: -1 });
+
+    const visibleReviews = reviews.filter((r) => !r.abuseFlag);
+
+    const total = visibleReviews.length;
+    const verifiedCount = visibleReviews.filter((r) => r.isVerified).length;
+    const avgRating = total > 0 ? (visibleReviews.reduce((s, r) => s + r.rating, 0) / total) : 0;
+
+    // weighted average: verified reviews weighted 1.5x
+    const weighted = visibleReviews.reduce((acc, r) => acc + r.rating * (r.isVerified ? 1.5 : 1), 0);
+    const weightSum = visibleReviews.reduce((acc, r) => acc + (r.isVerified ? 1.5 : 1), 0) || 1;
+    const weightedAvg = Math.round((weighted / weightSum) * 10) / 10;
+
+    // simple trust score = weightedAvg scaled to 0-5
+    const trustScore = weightedAvg;
+
+    res.status(200).json({
+      success: true,
+      aggregates: {
+        totalReviews: total,
+        verifiedReviews: verifiedCount,
+        averageRating: Math.round(avgRating * 10) / 10,
+        trustScore,
+      },
+      reviews,
+    });
   } catch (err) {
     next(err);
   }
